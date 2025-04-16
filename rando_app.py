@@ -6,20 +6,21 @@ import os
 import gspread
 from google.oauth2.service_account import Credentials
 
-# Load credentials from Streamlit secrets
+# Load credentials and Google Sheet
 creds_dict = st.secrets["gcp_service_account"]
+scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+credentials = Credentials.from_service_account_info(creds_dict, scopes=scopes)
 
-# Create credentials object
-credentials = Credentials.from_service_account_info(creds_dict)
-
-# Connect to Google Sheets
 client = gspread.authorize(credentials)
-sheet = client.open_by_key("1Yxa3gzpbx2hGKHyTLduT5JxHJ9Rt3Ll-VqeM0aKOZKI")
-worksheet = sheet.worksheet("randomization")
+sheet = client.open_by_key(st.secrets["settings"]["spreadsheet_test_id"])
+
+# Load worksheets
+template_ws = sheet.worksheet("randomization")
+log_ws = sheet.worksheet("log")
 
 # Load allocation table
-data = worksheet.get_all_records()
-df = pd.DataFrame(data)
+template_data = template_ws.get_all_records()
+df = pd.DataFrame(template_data)
 
 # Clean ID function
 def clean_id(val):
@@ -56,36 +57,21 @@ if st.button("🎯 Assign Group"):
             group_value = df.loc[row_idx, 'group']
             assigned_group = "Control" if group_value == 1 else "Intervention"
 
-            # Assign in table
+            # Update local DataFrame
             df.at[row_idx, 'assigned'] = True
             df.at[row_idx, 'redcap_id'] = study_id
 
-            # Backup allocation table
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_filename = f"backup_allocation_{timestamp}.csv"
-            shutil.copy("RandomizationAllocationTable_1000 NEW SLOTS.csv", backup_filename)
-
-            # Save updated allocation table
-            df.to_csv("RandomizationAllocationTable_1000 NEW SLOTS.csv", index=False)
+            # Overwrite the Google Sheet with updated df
+            updated_data = df.values.tolist()
+            header = df.columns.tolist()
+            template_ws.update([header] + updated_data)
 
             # Log assignment
-            log_data = {
-                "study_id": [study_id],
-                "insurance_status": [insurance_status],
-                "group": [assigned_group],
-                "timestamp": [timestamp]
-            }
-
-            log_df = pd.DataFrame(log_data)
-            log_file = "randomization_log.csv"
-
-            if os.path.exists(log_file):
-                log_df.to_csv(log_file, mode='a', header=False, index=False)
-            else:
-                log_df.to_csv(log_file, index=False)
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            log_ws.append_row([timestamp, study_id, insurance_status, assigned_group])
 
             # Confirmation
             st.success(f"✅ Study ID {study_id} assigned to: **{assigned_group}**")
-            st.info(f"🕒 Logged and backed up at {timestamp}")
+            st.info(f"🕒 Logged assignment at {timestamp}")
         else:
             st.error("❌ No more available slots for this insurance status!")
