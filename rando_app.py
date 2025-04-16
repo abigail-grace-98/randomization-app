@@ -12,7 +12,7 @@ scopes = ["https://www.googleapis.com/auth/spreadsheets"]
 credentials = Credentials.from_service_account_info(creds_dict, scopes=scopes)
 
 client = gspread.authorize(credentials)
-sheet = client.open_by_key(st.secrets["settings"]["spreadsheet_test_id"])
+sheet = client.open_by_key(st.secrets["settings"]["spreadsheet_id"])
 
 # Load worksheets
 template_ws = sheet.worksheet("randomization")
