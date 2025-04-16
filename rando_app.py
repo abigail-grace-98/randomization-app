@@ -3,9 +3,23 @@ import pandas as pd
 import datetime
 import shutil
 import os
+import gspread
+from google.oauth2.service_account import Credentials
+
+# Load credentials from Streamlit secrets
+creds_dict = st.secrets["gcp_service_account"]
+
+# Create credentials object
+credentials = Credentials.from_service_account_info(creds_dict)
+
+# Connect to Google Sheets
+client = gspread.authorize(credentials)
+sheet = client.open_by_key("1Yxa3gzpbx2hGKHyTLduT5JxHJ9Rt3Ll-VqeM0aKOZKI")
+worksheet = sheet.worksheet("randomization")
 
 # Load allocation table
-df = pd.read_csv("RandomizationAllocationTable_1000 NEW SLOTS.csv")
+data = worksheet.get_all_records()
+df = pd.DataFrame(data)
 
 # Clean ID function
 def clean_id(val):
