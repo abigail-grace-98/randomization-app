@@ -46,7 +46,7 @@ if st.button("🎯 Assign Group"):
     if study_id in df['redcap_id'].values:
         # Already assigned
         assigned_row = df[df['redcap_id'] == study_id]
-        assigned_group = "Control" if assigned_row['group'].values[0] == 1 else "Intervention"
+        assigned_group = "Intervention" if assigned_row['group'].values[0] == 1 else "Control"
         st.warning(f"⚠️ Study ID {study_id} has already been assigned to: **{assigned_group}**")
     else:
         # Look for available slot
@@ -55,7 +55,7 @@ if st.button("🎯 Assign Group"):
         if not available.empty:
             row_idx = available.index[0]
             group_value = df.loc[row_idx, 'group']
-            assigned_group = "Control" if group_value == 1 else "Intervention"
+            assigned_group = "Intervention" if group_value == 1 else "Control"
 
             # Update local DataFrame
             df.at[row_idx, 'assigned'] = True
